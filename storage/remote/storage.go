@@ -65,7 +65,7 @@ func NewStorage(l log.Logger, reg prometheus.Registerer, stCallback startTimeCal
 		logger:                 logging.Dedupe(l, 1*time.Minute),
 		localStartTimeCallback: stCallback,
 	}
-	s.rws = NewWriteStorage(s.logger, walDir, flushDeadline)
+	s.rws = NewWriteStorage(s.logger, reg, walDir, flushDeadline)
 	return s
 }
 
@@ -84,7 +84,7 @@ func (s *Storage) ApplyConfig(conf *config.Config) error {
 	for _, rrConf := range conf.RemoteReadConfigs {
 		hash, err := toHash(rrConf)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		// Don't allow duplicate remote read configs.

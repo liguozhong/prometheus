@@ -22,7 +22,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -93,7 +92,7 @@ func TestNoDuplicateReadConfigs(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		s := NewStorage(nil, prometheus.DefaultRegisterer, nil, dir, defaultFlushDeadline)
+		s := NewStorage(nil, nil, nil, dir, defaultFlushDeadline)
 		conf := &config.Config{
 			GlobalConfig:      config.DefaultGlobalConfig,
 			RemoteReadConfigs: tc.cfgs,
@@ -290,7 +289,7 @@ func TestPreferLocalStorageFilter(t *testing.T) {
 		}
 
 		if test.querier != q {
-			t.Errorf("%d. expected quierer %+v, got %+v", i, test.querier, q)
+			t.Errorf("%d. expected querier %+v, got %+v", i, test.querier, q)
 		}
 	}
 }
@@ -315,7 +314,7 @@ func TestRequiredMatchersFilter(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(want, have) {
-		t.Errorf("expected quierer %+v, got %+v", want, have)
+		t.Errorf("expected querier %+v, got %+v", want, have)
 	}
 }
 
