@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1932,6 +1933,7 @@ func TestSampledWriteEndpoint(t *testing.T) {
 	api := &API{
 		Appendable: suite.Storage(),
 		refs:       make(map[string]uint64),
+		refsLock:   &sync.RWMutex{},
 	}
 	err = api.write(req)
 	testutil.Ok(t, err)

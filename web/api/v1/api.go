@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -175,6 +176,7 @@ type API struct {
 	Queryable   storage.Queryable
 	Appendable  storage.Appendable
 	refs        map[string]uint64
+	refsLock    *sync.RWMutex
 	QueryEngine *promql.Engine
 
 	targetRetriever       targetRetriever
@@ -226,6 +228,7 @@ func NewAPI(
 	return &API{
 		QueryEngine:           qe,
 		refs:                  make(map[string]uint64),
+		refsLock:              &sync.RWMutex{},
 		Queryable:             q,
 		Appendable:            q,
 		targetRetriever:       tr,
@@ -1281,7 +1284,9 @@ func (api *API) write(req *prompb.WriteRequest) error {
 		sort.Sort(tsLabels)
 		tsLabelsKey := tsLabels.String()
 		for _, s := range ts.Samples {
+			api.refsLock.RLock()
 			ref, ok := api.refs[tsLabelsKey]
+			api.refsLock.RUnlock()
 			if ok {
 				err = app.AddFast(ref, s.Timestamp, s.Value)
 				if err != nil {
@@ -1293,7 +1298,9 @@ func (api *API) write(req *prompb.WriteRequest) error {
 			if err != nil {
 				return err
 			}
+			api.refsLock.Lock()
 			api.refs[tsLabelsKey] = ref
+			api.refsLock.Unlock()
 		}
 	}
 	return nil
