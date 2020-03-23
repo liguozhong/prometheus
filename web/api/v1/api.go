@@ -1289,10 +1289,19 @@ func (api *API) write(req *prompb.WriteRequest) error {
 			api.refsLock.RUnlock()
 			if ok {
 				err = app.AddFast(ref, s.Timestamp, s.Value)
-				if err != nil {
-					return err
+				if err != nil && strings.Contains(err.Error(), "unknown series") {
+					//
+				} else {
+					switch err {
+					case nil:
+					case storage.ErrOutOfOrderSample:
+						//level.Error(api.logger).Log("msg", "AddFast fail .Out of order sample", "err", err, "series", tsLabelsKey, "Timestamp", s.Timestamp, "Value", s.Value)
+					default:
+						level.Error(api.logger).Log("msg", "AddFast fail .unexpected error", "err", err, "series", tsLabelsKey, "Timestamp", s.Timestamp, "Value", s.Value)
+						return err
+					}
+					continue
 				}
-				continue
 			}
 			ref, err = app.Add(tsLabels, s.Timestamp, s.Value)
 			if err != nil {
