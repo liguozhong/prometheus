@@ -514,10 +514,10 @@ func (api *API) series(r *http.Request) apiFuncResult {
 		return apiFuncResult{nil, &apiError{errorBadData, errors.New("no match[] parameter provided")}, nil, nil}
 	}
 
-	start, err := parseTimeParam(r, "start", minTime)
-	if err != nil {
-		return apiFuncResult{nil, &apiError{errorBadData, err}, nil, nil}
-	}
+	//start, err := parseTimeParam(r, "start", minTime)
+	//if err != nil {
+	//	return apiFuncResult{nil, &apiError{errorBadData, err}, nil, nil}
+	//}
 	end, err := parseTimeParam(r, "end", maxTime)
 	if err != nil {
 		return apiFuncResult{nil, &apiError{errorBadData, err}, nil, nil}
@@ -532,7 +532,7 @@ func (api *API) series(r *http.Request) apiFuncResult {
 		matcherSets = append(matcherSets, matchers)
 	}
 
-	q, err := api.Queryable.Querier(r.Context(), timestamp.FromTime(start), timestamp.FromTime(end))
+	q, err := api.Queryable.Querier(r.Context(), timestamp.FromTime(end.Add(time.Minute*-5)), timestamp.FromTime(end))
 	if err != nil {
 		return apiFuncResult{nil, &apiError{errorExec, err}, nil, nil}
 	}
