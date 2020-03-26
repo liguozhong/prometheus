@@ -16,6 +16,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/prometheus/pkg/value"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -549,7 +550,7 @@ func (api *API) series(r *http.Request) apiFuncResult {
 		sets = append(sets, s)
 	}
 
-	set := storage.NewMergeSeriesSet(sets, nil)
+	set := storage.NewMergeSeriesSet(sets, storage.ChainedSeriesMerge)
 	metrics := []labels.Labels{}
 	for set.Next() {
 		metrics = append(metrics, set.At().Labels())
@@ -1284,18 +1285,31 @@ func (api *API) write(req *prompb.WriteRequest) error {
 		sort.Sort(tsLabels)
 		tsLabelsKey := tsLabels.String()
 		for _, s := range ts.Samples {
+			v := float64(s.Value)
+			if value.IsStaleNaN(v) {
+				level.Debug(api.logger).Log("msg", "IsStaleNaN cannot send value to TSDB, skipping sample", "value", v, "sample", s)
+				continue
+			}
+			if math.IsNaN(v) {
+				level.Debug(api.logger).Log("msg", "IsNaN cannot send value to TSDB, skipping sample", "value", v, "sample", s)
+				continue
+			}
+			if math.IsInf(v, 0) {
+				level.Debug(api.logger).Log("msg", "IsInf cannot send value to TSDB, skipping sample", "value", v, "sample", s)
+				continue
+			}
 			api.refsLock.RLock()
 			ref, ok := api.refs[tsLabelsKey]
 			api.refsLock.RUnlock()
 			if ok {
 				err = app.AddFast(ref, s.Timestamp, s.Value)
 				if err != nil && strings.Contains(err.Error(), "unknown series") {
-					//
+					level.Debug(api.logger).Log("msg", "unknown series", "value", v, "sample", s)
 				} else {
 					switch err {
 					case nil:
 					case storage.ErrOutOfOrderSample:
-						//level.Error(api.logger).Log("msg", "AddFast fail .Out of order sample", "err", err, "series", tsLabelsKey, "Timestamp", s.Timestamp, "Value", s.Value)
+						level.Debug(api.logger).Log("msg", "AddFast fail .Out of order sample", "err", err, "series", tsLabelsKey, "Timestamp", s.Timestamp, "Value", s.Value)
 					default:
 						level.Error(api.logger).Log("msg", "AddFast fail .unexpected error", "err", err, "series", tsLabelsKey, "Timestamp", s.Timestamp, "Value", s.Value)
 						return err
